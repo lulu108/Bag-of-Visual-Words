@@ -14,7 +14,7 @@ from sklearn.metrics.pairwise import chi2_kernel
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 
-#获取文件
+# 获取文件路径列表
 def getFiles(train, path):
     images = []
     count = 0
@@ -22,20 +22,24 @@ def getFiles(train, path):
         for file in  os.listdir(os.path.join(path, folder)):
             images.append(os.path.join(path, os.path.join(folder, file)))
 
+    # 训练集打乱有助于均衡采样
     if(train is True):
         np.random.shuffle(images)
     
     return images
 
 def getDescriptors(sift, img):
+    # 提取 SIFT 关键点与描述子
     kp, des = sift.detectAndCompute(img, None)
     return des
 
 def readImage(img_path):
+    # 灰度读取并统一尺寸，减少尺度差异
     img = cv2.imread(img_path, 0)
     return cv2.resize(img,(150,150))
 
 def vstackDescriptors(descriptor_list):
+    # 将每张图的描述子堆叠为一个大矩阵
     descriptors = np.array(descriptor_list[0])
     for descriptor in descriptor_list[1:]:
         descriptors = np.vstack((descriptors, descriptor)) 
@@ -43,10 +47,12 @@ def vstackDescriptors(descriptor_list):
     return descriptors
 
 def clusterDescriptors(descriptors, no_clusters):
+    # KMeans 形成视觉词典
     kmeans = KMeans(n_clusters = no_clusters).fit(descriptors)
     return kmeans
 
 def extractFeatures(kmeans, descriptor_list, image_count, no_clusters):
+    # 统计每张图在视觉词典上的直方图表示
     im_features = np.array([np.zeros(no_clusters) for i in range(image_count)])
     for i in range(image_count):
         for j in range(len(descriptor_list[i])):
@@ -58,9 +64,11 @@ def extractFeatures(kmeans, descriptor_list, image_count, no_clusters):
     return im_features
 
 def normalizeFeatures(scale, features):
+    # 标准化使不同维度的计数可比
     return scale.transform(features)
 
 def plotHistogram(im_features, no_clusters):
+    # 绘制整体视觉词频分布
     x_scalar = np.arange(no_clusters)
     y_scalar = np.array([abs(np.sum(im_features[:,h], dtype=np.int32)) for h in range(no_clusters)])
 
@@ -72,6 +80,7 @@ def plotHistogram(im_features, no_clusters):
     plt.show()
 
 def svcParamSelection(X, y, kernel, nfolds):
+    # 网格搜索选择 SVM 超参数
     Cs = [0.5, 0.1, 0.15, 0.2, 0.3]
     gammas = [0.1, 0.11, 0.095, 0.105]
     param_grid = {'C': Cs, 'gamma' : gammas}
@@ -83,11 +92,13 @@ def svcParamSelection(X, y, kernel, nfolds):
 def findSVM(im_features, train_labels, kernel):
     features = im_features
     if(kernel == "precomputed"):
+    # 预计算核需要 Gram 矩阵
       features = np.dot(im_features, im_features.T)
     
     params = svcParamSelection(features, train_labels, kernel, 5)
     C_param, gamma_param = params.get("C"), params.get("gamma")
     print(C_param, gamma_param)
+    # 通过类别权重缓解类别不平衡
     class_weight = {
         0: (807 / (7 * 140)),
         1: (807 / (7 * 140)),
@@ -112,6 +123,7 @@ def plotConfusionMatrix(y_true, y_pred, classes,
         else:
             title = 'Confusion matrix, without normalization'
 
+    # 计算混淆矩阵
     cm = confusion_matrix(y_true, y_pred)
     if normalize:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
@@ -157,18 +169,21 @@ def plotConfusions(true, predictions):
     plt.show()
 
 def findAccuracy(true, predictions):
+    # 输出分类准确率
     print ('accuracy score: %0.3f' % accuracy_score(true, predictions))
 
 def trainModel(path, no_clusters, kernel):
     images = getFiles(True, path)
     print("Train images path detected.")
-    sift = cv2.xfeatures2d.SIFT_create()
+    # 需要 opencv-contrib 的 SIFT
+    sift = cv2.SIFT_create()
     descriptor_list = []
     train_labels = np.array([])
     label_count = 7
     image_count = len(images)
 
     for img_path in images:
+        # 从路径包含的类别名映射到标签
         if("city" in img_path):
             class_index = 0
         elif("face" in img_path):
@@ -198,6 +213,7 @@ def trainModel(path, no_clusters, kernel):
     im_features = extractFeatures(kmeans, descriptor_list, image_count, no_clusters)
     print("Images features extracted.")
 
+    # 使用训练集统计量进行标准化
     scale = StandardScaler().fit(im_features)        
     im_features = scale.transform(im_features)
     print("Train images normalized.")
@@ -229,12 +245,13 @@ def testModel(path, kmeans, scale, svm, im_features, no_clusters, kernel):
         "6": "sea"
     }
 
-    sift = cv2.xfeatures2d.SIFT_create()
+    sift = cv2.SIFT_create()
 
     for img_path in test_images:
         img = readImage(img_path)
         des = getDescriptors(sift, img)
 
+        # 过滤无有效描述子的图片
         if(des is not None):
             count += 1
             descriptor_list.append(des)
@@ -262,6 +279,7 @@ def testModel(path, kmeans, scale, svm, im_features, no_clusters, kernel):
     
     kernel_test = test_features
     if(kernel == "precomputed"):
+        # 测试集 Gram 矩阵需与训练集对齐
         kernel_test = np.dot(test_features, im_features.T)
     
     predictions = [name_dict[str(int(i))] for i in svm.predict(kernel_test)]
@@ -275,6 +293,7 @@ def testModel(path, kmeans, scale, svm, im_features, no_clusters, kernel):
     print("Execution done.")
 
 def execute(train_path, test_path, no_clusters, kernel):
+    # 训练 + 测试完整流程
     kmeans, scale, svm, im_features = trainModel(train_path, no_clusters, kernel)
     testModel(test_path, kmeans, scale, svm, im_features, no_clusters, kernel)
 
