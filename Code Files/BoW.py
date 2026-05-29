@@ -14,6 +14,7 @@ from sklearn.metrics.pairwise import chi2_kernel
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 
+#获取文件
 def getFiles(train, path):
     images = []
     count = 0
