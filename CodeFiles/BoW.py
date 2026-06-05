@@ -348,13 +348,19 @@ if __name__ == '__main__':
         print("Kernel type must be either linear or precomputed")
         exit(0)
 
-    output_dir = "outputs"
-    fig_dir = os.path.join(output_dir, "figures")
-    result_dir = os.path.join(output_dir, "results")
-    model_dir = os.path.join(output_dir, "models")
+    output_dir = os.path.join("outputs", f"k{args['no_clusters']}_{args['kernel_type']}")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    os.makedirs(fig_dir, exist_ok=True)
-    os.makedirs(result_dir, exist_ok=True)
-    os.makedirs(model_dir, exist_ok=True)
+    fig_dir = os.path.join(output_dir, "figures")
+    model_dir = os.path.join(output_dir, "models")
+    result_dir = os.path.join(output_dir, "results")
+
+    if not os.path.exists(fig_dir):
+        os.makedirs(fig_dir)
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+    if not os.path.exists(result_dir):
+        os.makedirs(result_dir)
 
     execute(args['train_path'], args['test_path'], int(args['no_clusters']), args['kernel_type'], fig_dir=fig_dir, result_dir=result_dir)
