@@ -13,13 +13,15 @@ from sklearn.utils.multiclass import unique_labels
 from sklearn.metrics.pairwise import chi2_kernel
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
-
+'''
+python CodeFiles/BoW.py --train_path dataset/train --test_path dataset/test --no_clusters 100 --kernel linear 
+'''
 # 获取文件路径列表
 def getFiles(train, path):
     images = []
     count = 0
-    for folder in os.listdir(path):
-        for file in  os.listdir(os.path.join(path, folder)):
+    for folder in os.listdir(path): #遍历 path 目录下的所有类别文件夹
+        for file in  os.listdir(os.path.join(path, folder)):#进入每个类别文件夹，遍历里面的图片文件
             images.append(os.path.join(path, os.path.join(folder, file)))
 
     # 训练集打乱有助于均衡采样
@@ -31,13 +33,15 @@ def getFiles(train, path):
 def getDescriptors(sift, img):
     # 提取 SIFT 关键点与描述子
     kp, des = sift.detectAndCompute(img, None)
-    return des
+    return des #返回描述子
 
+#读取并预处理图像
 def readImage(img_path):
     # 灰度读取并统一尺寸，减少尺度差异
     img = cv2.imread(img_path, 0)
     return cv2.resize(img,(150,150))
 
+#堆叠所有描述子
 def vstackDescriptors(descriptor_list):
     # 将每张图的描述子堆叠为一个大矩阵
     descriptors = np.array(descriptor_list[0])
@@ -67,7 +71,7 @@ def normalizeFeatures(scale, features):
     # 标准化使不同维度的计数可比
     return scale.transform(features)
 
-def plotHistogram(im_features, no_clusters):
+def plotHistogram(im_features, no_clusters, fig_dir=None, kernel=None):
     # 绘制整体视觉词频分布
     x_scalar = np.arange(no_clusters)
     y_scalar = np.array([abs(np.sum(im_features[:,h], dtype=np.int32)) for h in range(no_clusters)])
@@ -77,7 +81,13 @@ def plotHistogram(im_features, no_clusters):
     plt.ylabel("Frequency")
     plt.title("Complete Vocabulary Generated")
     plt.xticks(x_scalar + 0.4, x_scalar)
-    plt.show()
+    plt.tight_layout()
+    if fig_dir is not None and kernel is not None:
+        save_path = os.path.join(fig_dir, f"vocabulary_frequency_k{no_clusters}_{kernel}.png")
+        plt.savefig(save_path, dpi=300)
+        plt.close()
+    else:
+        plt.show()
 
 def svcParamSelection(X, y, kernel, nfolds):
     # 网格搜索选择 SVM 超参数
@@ -93,7 +103,7 @@ def findSVM(im_features, train_labels, kernel):
     features = im_features
     if(kernel == "precomputed"):
     # 预计算核需要 Gram 矩阵
-      features = np.dot(im_features, im_features.T)
+        features = np.dot(im_features, im_features.T)
     
     params = svcParamSelection(features, train_labels, kernel, 5)
     C_param, gamma_param = params.get("C"), params.get("gamma")
@@ -116,7 +126,8 @@ def findSVM(im_features, train_labels, kernel):
 def plotConfusionMatrix(y_true, y_pred, classes,
                           normalize=False,
                           title=None,
-                          cmap=plt.cm.Blues):
+                          cmap=plt.cm.Blues,
+                          save_path=None):
     if not title:
         if normalize:
             title = 'Normalized confusion matrix'
@@ -154,25 +165,41 @@ def plotConfusionMatrix(y_true, y_pred, classes,
                     ha="center", va="center",
                     color="white" if cm[i, j] > thresh else "black")
     fig.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300)
+        plt.close(fig)
     return ax
 
-def plotConfusions(true, predictions):
+def plotConfusions(true, predictions, fig_dir=None, no_clusters=None, kernel=None):
     np.set_printoptions(precision=2)
 
     class_names = ["city", "face", "green", "house_building", "house_indoor", "office", "sea"]
+    save_path = None
+    if fig_dir is not None and no_clusters is not None and kernel is not None:
+        save_path = os.path.join(fig_dir, f"confusion_matrix_k{no_clusters}_{kernel}.png")
+
     plotConfusionMatrix(true, predictions, classes=class_names,
-                      title='Confusion matrix, without normalization')
+                      title='Confusion matrix, without normalization',
+                      save_path=save_path)
+
+    save_path = None
+    if fig_dir is not None and no_clusters is not None and kernel is not None:
+        save_path = os.path.join(fig_dir, f"confusion_matrix_normalized_k{no_clusters}_{kernel}.png")
 
     plotConfusionMatrix(true, predictions, classes=class_names, normalize=True,
-                      title='Normalized confusion matrix')
+                      title='Normalized confusion matrix',
+                      save_path=save_path)
 
-    plt.show()
+    if fig_dir is None:
+        plt.show()
 
 def findAccuracy(true, predictions):
     # 输出分类准确率
-    print ('accuracy score: %0.3f' % accuracy_score(true, predictions))
+    accuracy = accuracy_score(true, predictions)
+    print ('accuracy score: %0.3f' % accuracy)
+    return accuracy
 
-def trainModel(path, no_clusters, kernel):
+def trainModel(path, no_clusters, kernel, fig_dir=None):
     images = getFiles(True, path)
     print("Train images path detected.")
     # 需要 opencv-contrib 的 SIFT
@@ -218,7 +245,7 @@ def trainModel(path, no_clusters, kernel):
     im_features = scale.transform(im_features)
     print("Train images normalized.")
 
-    plotHistogram(im_features, no_clusters)
+    plotHistogram(im_features, no_clusters, fig_dir=fig_dir, kernel=kernel)
     print("Features histogram plotted.")
 
     svm = findSVM(im_features, train_labels, kernel)
@@ -227,7 +254,7 @@ def trainModel(path, no_clusters, kernel):
 
     return kmeans, scale, svm, im_features
 
-def testModel(path, kmeans, scale, svm, im_features, no_clusters, kernel):
+def testModel(path, kmeans, scale, svm, im_features, no_clusters, kernel, fig_dir=None, result_dir=None):
     test_images = getFiles(False, path)
     print("Test images path detected.")
 
@@ -285,17 +312,27 @@ def testModel(path, kmeans, scale, svm, im_features, no_clusters, kernel):
     predictions = [name_dict[str(int(i))] for i in svm.predict(kernel_test)]
     print("Test images classified.")
 
-    plotConfusions(true, predictions)
+    plotConfusions(true, predictions, fig_dir=fig_dir, no_clusters=no_clusters, kernel=kernel)
     print("Confusion matrixes plotted.")
 
-    findAccuracy(true, predictions)
+    accuracy = findAccuracy(true, predictions)
     print("Accuracy calculated.")
+    if result_dir is not None:
+        cm = confusion_matrix(true, predictions)
+        result_path = os.path.join(result_dir, f"result_k{no_clusters}_{kernel}.txt")
+        with open(result_path, "w", encoding="utf-8") as f:
+            f.write(f"no_clusters: {no_clusters}\n")
+            f.write(f"kernel: {kernel}\n")
+            f.write(f"accuracy: {accuracy:.6f}\n")
+            f.write("confusion_matrix:\n")
+            f.write(str(cm))
+            f.write("\n")
     print("Execution done.")
 
-def execute(train_path, test_path, no_clusters, kernel):
+def execute(train_path, test_path, no_clusters, kernel, fig_dir=None, result_dir=None):
     # 训练 + 测试完整流程
-    kmeans, scale, svm, im_features = trainModel(train_path, no_clusters, kernel)
-    testModel(test_path, kmeans, scale, svm, im_features, no_clusters, kernel)
+    kmeans, scale, svm, im_features = trainModel(train_path, no_clusters, kernel, fig_dir=fig_dir)
+    testModel(test_path, kmeans, scale, svm, im_features, no_clusters, kernel, fig_dir=fig_dir, result_dir=result_dir)
 
 if __name__ == '__main__':
 
@@ -311,4 +348,13 @@ if __name__ == '__main__':
         print("Kernel type must be either linear or precomputed")
         exit(0)
 
-    execute(args['train_path'], args['test_path'], int(args['no_clusters']), args['kernel_type'])
+    output_dir = "outputs"
+    fig_dir = os.path.join(output_dir, "figures")
+    result_dir = os.path.join(output_dir, "results")
+    model_dir = os.path.join(output_dir, "models")
+
+    os.makedirs(fig_dir, exist_ok=True)
+    os.makedirs(result_dir, exist_ok=True)
+    os.makedirs(model_dir, exist_ok=True)
+
+    execute(args['train_path'], args['test_path'], int(args['no_clusters']), args['kernel_type'], fig_dir=fig_dir, result_dir=result_dir)

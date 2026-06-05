@@ -1,0 +1,6 @@
+dataset/
+__pycache__/
+*.pyc
+outputs/models/
+.DS_Store
+Thumbs.db
