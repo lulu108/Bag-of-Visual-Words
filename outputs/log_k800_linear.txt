@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "CodeFiles/BoW.py", line 2, in <module>
+    import cv2
+  File "D:\python\lib\site-packages\cv2\__init__.py", line 180, in <module>
+    bootstrap()
+  File "D:\python\lib\site-packages\cv2\__init__.py", line 152, in bootstrap
+    native_module = importlib.import_module("cv2")
+  File "D:\python\lib\importlib\__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+ImportError: DLL load failed while importing cv2: 找不到指定的模块。
