@@ -1,0 +1,18 @@
+method: sift_bovw_k400
+accuracy: 0.507177
+macro_precision: 0.523707
+macro_recall: 0.507553
+macro_f1: 0.493600
+weighted_f1: 0.493379
+feature_extract_time: 848.594607
+train_time: 22.814582
+test_time: 0.002003
+total_time: 871.411192
+confusion_matrix:
+[[12  1 11  0  1  0  5]
+ [ 0 21  3  2  0  0  4]
+ [ 4  2 19  0  0  0  5]
+ [ 2  2  2 13  3  8  0]
+ [ 1  2  4  1  4 17  1]
+ [ 1  1  2  2  2 20  2]
+ [ 1  0  8  1  1  1 17]]
