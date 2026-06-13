@@ -1,7 +1,9 @@
 import argparse
+import csv
 import cv2
 import numpy as np 
 import os
+import time
 from sklearn.cluster import KMeans
 from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
@@ -12,24 +14,27 @@ from sklearn.metrics import confusion_matrix
 from sklearn.utils.multiclass import unique_labels
 from sklearn.metrics.pairwise import chi2_kernel
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score, precision_recall_fscore_support
 '''
 python CodeFiles/BoW.py --train_path dataset/train --test_path dataset/test --no_clusters 100 --kernel linear 
 '''
+RANDOM_STATE = 42
+np.random.seed(RANDOM_STATE)
+
 # 获取文件路径列表
 def getFiles(train, path):
     images = []
-    count = 0
-    for folder in os.listdir(path): #遍历 path 目录下的所有类别文件夹
-        for file in  os.listdir(os.path.join(path, folder)):#进入每个类别文件夹，遍历里面的图片文件
-            images.append(os.path.join(path, os.path.join(folder, file)))
+    for folder in sorted(os.listdir(path)):
+        folder_path = os.path.join(path, folder)
+        for file in sorted(os.listdir(folder_path)):
+            images.append(os.path.join(folder_path, file))
 
-    # 训练集打乱有助于均衡采样
+    # 训练集仍然打乱，但使用固定随机种子，保证每次实验读取顺序可复现。
     if(train is True):
-        np.random.shuffle(images)
+        rng = np.random.RandomState(RANDOM_STATE)
+        rng.shuffle(images)
     
     return images
-
 def getDescriptors(sift, img):
     # 提取 SIFT 关键点与描述子
     kp, des = sift.detectAndCompute(img, None)
@@ -52,20 +57,38 @@ def vstackDescriptors(descriptor_list):
 
 def clusterDescriptors(descriptors, no_clusters):
     # KMeans 形成视觉词典
-    kmeans = KMeans(n_clusters = no_clusters).fit(descriptors)
+    kmeans = KMeans(n_clusters = no_clusters, random_state=RANDOM_STATE, n_init=10).fit(descriptors)
     return kmeans
 
 def extractFeatures(kmeans, descriptor_list, image_count, no_clusters):
     # 统计每张图在视觉词典上的直方图表示
     im_features = np.array([np.zeros(no_clusters) for i in range(image_count)])
     for i in range(image_count):
-        for j in range(len(descriptor_list[i])):
-            feature = descriptor_list[i][j]
-            feature = feature.reshape(1, 128)
-            idx = kmeans.predict(feature)
-            im_features[i][idx] += 1
+        # 对整张图像的 SIFT descriptors 批量预测 visual words，避免逐 descriptor 调用 KMeans。
+        visual_words = kmeans.predict(descriptor_list[i])
+        im_features[i], _ = np.histogram(visual_words, bins=np.arange(no_clusters + 1))
 
     return im_features
+
+def getClassIndex(img_path):
+    if("city" in img_path):
+        return 0
+    elif("face" in img_path):
+        return 1
+    elif("green" in img_path):
+        return 2
+    elif("house_building" in img_path):
+        return 3
+    elif("house_indoor" in img_path):
+        return 4
+    elif("office" in img_path):
+        return 5
+    else:
+        return 6
+
+def getClassName(img_path):
+    class_names = ["city", "face", "green", "house_building", "house_indoor", "office", "sea"]
+    return class_names[getClassIndex(img_path)]
 
 def normalizeFeatures(scale, features):
     # 标准化使不同维度的计数可比
@@ -199,38 +222,84 @@ def findAccuracy(true, predictions):
     print ('accuracy score: %0.3f' % accuracy)
     return accuracy
 
+def calculateMetrics(true, predictions):
+    # 汇总复现实验常用分类指标，zero_division=0 避免极端类别缺预测时报 warning。
+    accuracy = accuracy_score(true, predictions)
+    macro_precision, macro_recall, macro_f1, _ = precision_recall_fscore_support(
+        true, predictions, average="macro", zero_division=0
+    )
+    weighted_f1 = f1_score(true, predictions, average="weighted", zero_division=0)
+    return {
+        "accuracy": accuracy,
+        "macro_precision": macro_precision,
+        "macro_recall": macro_recall,
+        "macro_f1": macro_f1,
+        "weighted_f1": weighted_f1,
+    }
+
+def writeResultTxt(result_dir, no_clusters, kernel, metrics, timings, cm):
+    result_path = os.path.join(result_dir, f"result_k{no_clusters}_{kernel}.txt")
+    with open(result_path, "w", encoding="utf-8") as f:
+        f.write(f"no_clusters: {no_clusters}\n")
+        f.write(f"kernel: {kernel}\n")
+        for metric_name in ["accuracy", "macro_precision", "macro_recall", "macro_f1", "weighted_f1"]:
+            f.write(f"{metric_name}: {metrics[metric_name]:.6f}\n")
+        for timing_name in ["train_time", "test_time", "total_time"]:
+            f.write(f"{timing_name}: {timings[timing_name]:.6f}\n")
+        f.write("confusion_matrix:\n")
+        f.write(str(cm))
+        f.write("\n")
+
+def appendSummaryCsv(no_clusters, kernel, metrics, timings):
+    summary_path = os.path.join("outputs", "summary_results.csv")
+    fieldnames = [
+        "method",
+        "no_clusters",
+        "kernel",
+        "accuracy",
+        "macro_precision",
+        "macro_recall",
+        "macro_f1",
+        "weighted_f1",
+        "train_time",
+        "test_time",
+        "total_time",
+    ]
+    os.makedirs(os.path.dirname(summary_path), exist_ok=True)
+    write_header = not os.path.exists(summary_path)
+    with open(summary_path, "a", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        row = {
+            "method": "SIFT-BoVW-SVM",
+            "no_clusters": no_clusters,
+            "kernel": kernel,
+        }
+        row.update({name: f"{metrics[name]:.6f}" for name in ["accuracy", "macro_precision", "macro_recall", "macro_f1", "weighted_f1"]})
+        row.update({name: f"{timings[name]:.6f}" for name in ["train_time", "test_time", "total_time"]})
+        writer.writerow(row)
+
 def trainModel(path, no_clusters, kernel, fig_dir=None):
     images = getFiles(True, path)
     print("Train images path detected.")
-    # 需要 opencv-contrib 的 SIFT
+    # 需要 opencv-contrib 的 SIFT。
     sift = cv2.SIFT_create()
     descriptor_list = []
     train_labels = np.array([])
     label_count = 7
-    image_count = len(images)
 
     for img_path in images:
-        # 从路径包含的类别名映射到标签
-        if("city" in img_path):
-            class_index = 0
-        elif("face" in img_path):
-            class_index = 1
-        elif("green" in img_path):
-            class_index = 2
-        elif("house_building" in img_path):
-            class_index = 3
-        elif("house_indoor" in img_path):
-            class_index = 4
-        elif("office" in img_path):
-          class_index = 5
-        else:
-          class_index = 6
-
-        train_labels = np.append(train_labels, class_index)
         img = readImage(img_path)
         des = getDescriptors(sift, img)
+        # 训练图像没有 SIFT descriptors 时跳过，并同步跳过 label，避免特征和标签错位。
+        if des is None:
+            continue
+        class_index = getClassIndex(img_path)
+        train_labels = np.append(train_labels, class_index)
         descriptor_list.append(des)
 
+    image_count = len(descriptor_list)
     descriptors = vstackDescriptors(descriptor_list)
     print("Descriptors vstacked.")
 
@@ -240,7 +309,7 @@ def trainModel(path, no_clusters, kernel, fig_dir=None):
     im_features = extractFeatures(kmeans, descriptor_list, image_count, no_clusters)
     print("Images features extracted.")
 
-    # 使用训练集统计量进行标准化
+    # 使用训练集统计量进行标准化。
     scale = StandardScaler().fit(im_features)        
     im_features = scale.transform(im_features)
     print("Train images normalized.")
@@ -262,7 +331,7 @@ def testModel(path, kmeans, scale, svm, im_features, no_clusters, kernel, fig_di
     true = []
     descriptor_list = []
 
-    name_dict =	{
+    name_dict = {
         "0": "city",
         "1": "face",
         "2": "green",
@@ -278,27 +347,11 @@ def testModel(path, kmeans, scale, svm, im_features, no_clusters, kernel, fig_di
         img = readImage(img_path)
         des = getDescriptors(sift, img)
 
-        # 过滤无有效描述子的图片
+        # 测试图像没有有效 descriptors 时跳过，和原有测试流程保持一致。
         if(des is not None):
             count += 1
             descriptor_list.append(des)
-
-            if("city" in img_path):
-                true.append("city")
-            elif("face" in img_path):
-                true.append("face")
-            elif("green" in img_path):
-                true.append("green")
-            elif("house_building" in img_path):
-                true.append("house_building")
-            elif("house_indoor" in img_path):
-                true.append("house_indoor")
-            elif("office" in img_path):
-                true.append("office")
-            else:
-                true.append("sea")
-
-    descriptors = vstackDescriptors(descriptor_list)
+            true.append(getClassName(img_path))
 
     test_features = extractFeatures(kmeans, descriptor_list, count, no_clusters)
 
@@ -306,7 +359,7 @@ def testModel(path, kmeans, scale, svm, im_features, no_clusters, kernel, fig_di
     
     kernel_test = test_features
     if(kernel == "precomputed"):
-        # 测试集 Gram 矩阵需与训练集对齐
+        # 测试集 Gram 矩阵需与训练集对齐。
         kernel_test = np.dot(test_features, im_features.T)
     
     predictions = [name_dict[str(int(i))] for i in svm.predict(kernel_test)]
@@ -315,24 +368,31 @@ def testModel(path, kmeans, scale, svm, im_features, no_clusters, kernel, fig_di
     plotConfusions(true, predictions, fig_dir=fig_dir, no_clusters=no_clusters, kernel=kernel)
     print("Confusion matrixes plotted.")
 
-    accuracy = findAccuracy(true, predictions)
-    print("Accuracy calculated.")
-    if result_dir is not None:
-        cm = confusion_matrix(true, predictions)
-        result_path = os.path.join(result_dir, f"result_k{no_clusters}_{kernel}.txt")
-        with open(result_path, "w", encoding="utf-8") as f:
-            f.write(f"no_clusters: {no_clusters}\n")
-            f.write(f"kernel: {kernel}\n")
-            f.write(f"accuracy: {accuracy:.6f}\n")
-            f.write("confusion_matrix:\n")
-            f.write(str(cm))
-            f.write("\n")
+    metrics = calculateMetrics(true, predictions)
+    print("Metrics calculated.")
     print("Execution done.")
+    return metrics, confusion_matrix(true, predictions)
 
 def execute(train_path, test_path, no_clusters, kernel, fig_dir=None, result_dir=None):
-    # 训练 + 测试完整流程
+    # 训练 + 测试完整流程，并记录可复现实验的耗时。
+    total_start = time.time()
+    train_start = time.time()
     kmeans, scale, svm, im_features = trainModel(train_path, no_clusters, kernel, fig_dir=fig_dir)
-    testModel(test_path, kmeans, scale, svm, im_features, no_clusters, kernel, fig_dir=fig_dir, result_dir=result_dir)
+    train_time = time.time() - train_start
+
+    test_start = time.time()
+    metrics, cm = testModel(test_path, kmeans, scale, svm, im_features, no_clusters, kernel, fig_dir=fig_dir, result_dir=result_dir)
+    test_time = time.time() - test_start
+    total_time = time.time() - total_start
+
+    timings = {
+        "train_time": train_time,
+        "test_time": test_time,
+        "total_time": total_time,
+    }
+    if result_dir is not None:
+        writeResultTxt(result_dir, no_clusters, kernel, metrics, timings, cm)
+    appendSummaryCsv(no_clusters, kernel, metrics, timings)
 
 if __name__ == '__main__':
 
