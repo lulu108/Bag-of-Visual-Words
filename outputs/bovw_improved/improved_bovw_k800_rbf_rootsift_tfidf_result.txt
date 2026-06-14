@@ -1,0 +1,22 @@
+method: improved_bovw_k800_rbf_rootsift_tfidf
+no_clusters: 800
+kernel: rbf
+use_rootsift: True
+use_tfidf: True
+best_params: {'C': 10, 'gamma': 0.0001}
+accuracy: 0.650718
+macro_precision: 0.720710
+macro_recall: 0.650739
+macro_f1: 0.632897
+weighted_f1: 0.632495
+train_time: 1673.872123
+test_time: 7.606497
+total_time: 1681.478620
+confusion_matrix:
+[[21  0  8  0  0  0  1]
+ [ 0 22  2  0  0  4  2]
+ [ 1  1 26  0  0  0  2]
+ [ 5  0  0 18  0  7  0]
+ [ 2  0  1  2  4 21  0]
+ [ 0  0  1  2  1 26  0]
+ [ 1  1  7  0  0  1 19]]
