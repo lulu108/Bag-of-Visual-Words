@@ -4,10 +4,10 @@ macro_precision: 0.714059
 macro_recall: 0.680952
 macro_f1: 0.660885
 weighted_f1: 0.660885
-feature_extract_time: 25.238663
-train_time: 336.445098
-test_time: 0.009068
-total_time: 361.692829
+feature_extract_time: 43.713705
+train_time: 455.877709
+test_time: 0.073518
+total_time: 499.664932
 confusion_matrix:
 [[22  1  1  0  0  2  4]
  [ 0 27  3  0  0  0  0]

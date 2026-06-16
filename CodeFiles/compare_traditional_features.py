@@ -276,7 +276,7 @@ def append_summary(output_dir, rows):
             })
 
 
-def run_experiment(train_path, test_path, image_size, output_dir):
+def run_experiment(train_path, test_path, image_size, output_dir, bovw_clusters=DEFAULT_BOVW_CLUSTERS):
     np.random.seed(RANDOM_STATE)
     os.makedirs(output_dir, exist_ok=True)
     train_paths, train_labels, class_names = get_image_paths_and_labels(train_path)
@@ -320,10 +320,10 @@ def run_experiment(train_path, test_path, image_size, output_dir):
         test_paths,
         test_labels,
         image_size,
-        DEFAULT_BOVW_CLUSTERS,
+        bovw_clusters,
     )
     bovw_metrics = train_and_evaluate(
-        "sift_bovw_k400",
+        f"sift_bovw_k{bovw_clusters}",
         bovw_train,
         bovw_train_labels,
         bovw_test,
@@ -332,7 +332,7 @@ def run_experiment(train_path, test_path, image_size, output_dir):
         output_dir,
         bovw_time,
     )
-    summary_rows.append({"method": "sift_bovw_k400", **bovw_metrics})
+    summary_rows.append({"method": f"sift_bovw_k{bovw_clusters}", **bovw_metrics})
 
     append_summary(output_dir, summary_rows)
     return summary_rows
@@ -344,9 +344,12 @@ def parse_args():
     parser.add_argument("--test_path", default="dataset/test")
     parser.add_argument("--image_size", default=150, type=int)
     parser.add_argument("--output_dir", default=os.path.join("outputs", "feature_compare"))
+    parser.add_argument("--bovw_clusters", default=DEFAULT_BOVW_CLUSTERS, type=int,
+                        help="Number of visual words (K) for SIFT-BoVW KMeans clustering.")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
-    run_experiment(args.train_path, args.test_path, args.image_size, args.output_dir)
+    run_experiment(args.train_path, args.test_path, args.image_size, args.output_dir,
+                   bovw_clusters=args.bovw_clusters)
