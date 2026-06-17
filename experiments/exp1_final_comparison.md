@@ -1,6 +1,6 @@
 # 实验一：最终实验结果汇总
 
-> 生成时间：2026-06-17 11:56:50
+> 生成时间：2026-06-17 12:04:45
 > 选择指标：macro_f1（平局时比较 accuracy）
 
 ## 结果组织方式
@@ -58,5 +58,5 @@ SIFT-BoVW 使用 K sweep 中的最优结果（K=800, kernel=linear, SVC pipeline
 | method | setting | accuracy | macro_precision | macro_recall | macro_f1 | weighted_f1 | total_time | notes |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Original SIFT-BoVW (最优 K) | K=800, kernel=linear, SVC pipeline | 0.679426 | 0.722068 | 0.679639 | 0.661117 | 0.660489 | 969.61 | 原始 SIFT-BoVW（无 RootSIFT/TF-IDF）；来自 K sweep 最优结果。 |
-| Improved BoVW (linear + RootSIFT + TF-IDF) | K=800, kernel=linear, RootSIFT + TF-IDF, SVC pipeline | 0.626794 | 0.709823 | 0.627094 | 0.612165 | 0.611550 | 1685.91 | 来自 BoW_improved.py；RootSIFT + TF-IDF 旨在改善特征表达和视觉词权重。 |
+| Improved BoVW (linear + RootSIFT + TF-IDF) | K=800, kernel=linear, RootSIFT + TF-IDF, SVC pipeline | 0.626794 | 0.709823 | 0.627094 | 0.612165 | 0.611550 | 1060.21 | 来自 BoW_improved.py；RootSIFT + TF-IDF 旨在改善特征表达和视觉词权重。 |
 | Improved BoVW (rbf + RootSIFT + TF-IDF) | K=800, kernel=rbf, RootSIFT + TF-IDF, SVC pipeline | 0.650718 | 0.720710 | 0.650739 | 0.632897 | 0.632495 | 1681.48 | 来自 BoW_improved.py；RBF kernel 可捕捉非线性决策边界。 |
