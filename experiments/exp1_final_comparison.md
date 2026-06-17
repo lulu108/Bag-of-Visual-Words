@@ -1,6 +1,6 @@
 # 实验一：最终实验结果汇总
 
-> 生成时间：2026-06-17 12:04:45
+> 生成时间：2026-06-17 14:54:47
 > 选择指标：macro_f1（平局时比较 accuracy）
 
 ## 结果组织方式
@@ -34,9 +34,9 @@ Color Histogram、HOG、SIFT-BoVW-K800 均来自 `compare_traditional_features.p
 
 | method | setting | accuracy | macro_precision | macro_recall | macro_f1 | weighted_f1 | total_time | notes |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Color Histogram | 3D HSV (8×8×8) + LinearSVC | 0.657143 | 0.657716 | 0.657143 | 0.647602 | 0.647602 | 18.72 | 来自 compare_traditional_features.py；使用 LinearSVC，仅作为基线参考。 |
-| HOG | HOG (orient=9, ppc=8×8, cpb=2×2) + LinearSVC | 0.680952 | 0.714059 | 0.680952 | 0.660885 | 0.660885 | 216.01 | 来自 compare_traditional_features.py；使用 LinearSVC，仅作为纹理特征基线。 |
-| SIFT-BoVW-K800 | SIFT-BoVW K=800 + LinearSVC | 0.598086 | 0.611642 | 0.597865 | 0.572688 | 0.572788 | 997.20 | 来自 compare_traditional_features.py；使用 LinearSVC，与 Color Histogram/HOG 统一分类器。 |
+| Color Histogram | 3D HSV (8×8×8) + LinearSVC | 0.657143 | 0.657716 | 0.657143 | 0.647602 | 0.647602 | 19.51 | 来自 compare_traditional_features.py；使用 LinearSVC，仅作为基线参考。 |
+| HOG | HOG (orient=9, ppc=8×8, cpb=2×2) + LinearSVC | 0.680952 | 0.714059 | 0.680952 | 0.660885 | 0.660885 | 409.64 | 来自 compare_traditional_features.py；使用 LinearSVC，仅作为纹理特征基线。 |
+| SIFT-BoVW-K800 | SIFT-BoVW K=800 + LinearSVC | 0.569378 | 0.563223 | 0.569622 | 0.547713 | 0.547510 | 1994.88 | 来自 compare_traditional_features.py；使用 LinearSVC，与 Color Histogram/HOG 统一分类器。 |
 
 ## 表 2：较优配置综合对比
 
@@ -46,8 +46,8 @@ SIFT-BoVW 使用 K sweep 中的最优结果（K=800, kernel=linear, SVC pipeline
 
 | method | setting | accuracy | macro_precision | macro_recall | macro_f1 | weighted_f1 | total_time | notes |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Color Histogram | 3D HSV (8×8×8) + LinearSVC | 0.657143 | 0.657716 | 0.657143 | 0.647602 | 0.647602 | 18.72 | 来自 compare_traditional_features.py（LinearSVC）；本表不是严格控制同一分类器。 |
-| HOG | HOG (orient=9, ppc=8×8, cpb=2×2) + LinearSVC | 0.680952 | 0.714059 | 0.680952 | 0.660885 | 0.660885 | 216.01 | 来自 compare_traditional_features.py（LinearSVC）；本表不是严格控制同一分类器。 |
+| Color Histogram | 3D HSV (8×8×8) + LinearSVC | 0.657143 | 0.657716 | 0.657143 | 0.647602 | 0.647602 | 19.51 | 来自 compare_traditional_features.py（LinearSVC）；本表不是严格控制同一分类器。 |
+| HOG | HOG (orient=9, ppc=8×8, cpb=2×2) + LinearSVC | 0.680952 | 0.714059 | 0.680952 | 0.660885 | 0.660885 | 409.64 | 来自 compare_traditional_features.py（LinearSVC）；本表不是严格控制同一分类器。 |
 | SIFT-BoVW (最优 K) | K=800, kernel=linear, SVC pipeline | 0.679426 | 0.722068 | 0.679639 | 0.661117 | 0.660489 | 969.61 | 来自 K sweep 最优结果（select_by=macro_f1），不是 feature_compare 中的 LinearSVC 结果；使用 GridSearchCV 搜索 SVC 最优超参数。 |
 
 ## 表 3：BoVW 改进尝试对比
@@ -58,5 +58,5 @@ SIFT-BoVW 使用 K sweep 中的最优结果（K=800, kernel=linear, SVC pipeline
 | method | setting | accuracy | macro_precision | macro_recall | macro_f1 | weighted_f1 | total_time | notes |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Original SIFT-BoVW (最优 K) | K=800, kernel=linear, SVC pipeline | 0.679426 | 0.722068 | 0.679639 | 0.661117 | 0.660489 | 969.61 | 原始 SIFT-BoVW（无 RootSIFT/TF-IDF）；来自 K sweep 最优结果。 |
-| Improved BoVW (linear + RootSIFT + TF-IDF) | K=800, kernel=linear, RootSIFT + TF-IDF, SVC pipeline | 0.626794 | 0.709823 | 0.627094 | 0.612165 | 0.611550 | 1060.21 | 来自 BoW_improved.py；RootSIFT + TF-IDF 旨在改善特征表达和视觉词权重。 |
+| Improved BoVW (linear + RootSIFT + TF-IDF) | K=800, kernel=linear, RootSIFT + TF-IDF, SVC pipeline | 0.626794 | 0.709823 | 0.627094 | 0.612165 | 0.611550 | 1685.91 | 来自 BoW_improved.py；RootSIFT + TF-IDF 旨在改善特征表达和视觉词权重。 |
 | Improved BoVW (rbf + RootSIFT + TF-IDF) | K=800, kernel=rbf, RootSIFT + TF-IDF, SVC pipeline | 0.650718 | 0.720710 | 0.650739 | 0.632897 | 0.632495 | 1681.48 | 来自 BoW_improved.py；RBF kernel 可捕捉非线性决策边界。 |

@@ -1,4 +1,3 @@
 method,no_clusters,kernel,use_rootsift,use_tfidf,accuracy,macro_precision,macro_recall,macro_f1,weighted_f1,train_time,test_time,total_time
 improved_bovw_k800_linear_rootsift_tfidf,800,linear,True,True,0.626794,0.709823,0.627094,0.612165,0.611550,1680.550697,5.363252,1685.913949
 improved_bovw_k800_rbf_rootsift_tfidf,800,rbf,True,True,0.650718,0.720710,0.650739,0.632897,0.632495,1673.872123,7.606497,1681.478620
-improved_bovw_k800_linear_rootsift_tfidf,800,linear,True,True,0.626794,0.709823,0.627094,0.612165,0.611550,1057.144341,3.065562,1060.209903

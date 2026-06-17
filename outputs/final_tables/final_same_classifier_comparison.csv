@@ -1,4 +1,4 @@
 method,setting,accuracy,macro_precision,macro_recall,macro_f1,weighted_f1,total_time,notes
-Color Histogram,3D HSV (8×8×8) + LinearSVC,0.657143,0.657716,0.657143,0.647602,0.647602,18.72,来自 compare_traditional_features.py；使用 LinearSVC，仅作为基线参考。
-HOG,"HOG (orient=9, ppc=8×8, cpb=2×2) + LinearSVC",0.680952,0.714059,0.680952,0.660885,0.660885,216.01,来自 compare_traditional_features.py；使用 LinearSVC，仅作为纹理特征基线。
-SIFT-BoVW-K800,SIFT-BoVW K=800 + LinearSVC,0.598086,0.611642,0.597865,0.572688,0.572788,997.20,来自 compare_traditional_features.py；使用 LinearSVC，与 Color Histogram/HOG 统一分类器。
+Color Histogram,3D HSV (8×8×8) + LinearSVC,0.657143,0.657716,0.657143,0.647602,0.647602,19.51,来自 compare_traditional_features.py；使用 LinearSVC，仅作为基线参考。
+HOG,"HOG (orient=9, ppc=8×8, cpb=2×2) + LinearSVC",0.680952,0.714059,0.680952,0.660885,0.660885,409.64,来自 compare_traditional_features.py；使用 LinearSVC，仅作为纹理特征基线。
+SIFT-BoVW-K800,SIFT-BoVW K=800 + LinearSVC,0.569378,0.563223,0.569622,0.547713,0.547510,1994.88,来自 compare_traditional_features.py；使用 LinearSVC，与 Color Histogram/HOG 统一分类器。
