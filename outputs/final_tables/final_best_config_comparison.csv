@@ -1,0 +1,4 @@
+method,setting,accuracy,macro_precision,macro_recall,macro_f1,weighted_f1,total_time,notes
+Color Histogram,3D HSV (8×8×8) + LinearSVC,0.657143,0.657716,0.657143,0.647602,0.647602,18.72,来自 compare_traditional_features.py（LinearSVC）；本表不是严格控制同一分类器。
+HOG,"HOG (orient=9, ppc=8×8, cpb=2×2) + LinearSVC",0.680952,0.714059,0.680952,0.660885,0.660885,216.01,来自 compare_traditional_features.py（LinearSVC）；本表不是严格控制同一分类器。
+SIFT-BoVW (最优 K),"K=800, kernel=linear, SVC pipeline",0.679426,0.722068,0.679639,0.661117,0.660489,969.61,来自 K sweep 最优结果（select_by=macro_f1），不是 feature_compare 中的 LinearSVC 结果；使用 GridSearchCV 搜索 SVC 最优超参数。

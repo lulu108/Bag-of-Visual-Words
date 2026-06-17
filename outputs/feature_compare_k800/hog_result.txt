@@ -1,0 +1,18 @@
+method: hog
+accuracy: 0.680952
+macro_precision: 0.714059
+macro_recall: 0.680952
+macro_f1: 0.660885
+weighted_f1: 0.660885
+feature_extract_time: 10.593101
+train_time: 205.405700
+test_time: 0.009003
+total_time: 216.007804
+confusion_matrix:
+[[22  1  1  0  0  2  4]
+ [ 0 27  3  0  0  0  0]
+ [ 1  0 22  0  0  0  7]
+ [ 3  0  2 23  0  1  1]
+ [ 6  0  3  3  5 12  1]
+ [ 1  0  2  1  1 24  1]
+ [ 2  1  7  0  0  0 20]]
