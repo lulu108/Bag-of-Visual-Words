@@ -1,0 +1,19 @@
+method: Color Histogram (SVC)
+best_params: {'C': 100}
+accuracy: 0.690476
+macro_precision: 0.720083
+macro_recall: 0.690476
+macro_f1: 0.688484
+weighted_f1: 0.688484
+feature_extract_time: 20.920242
+train_time: 24.897454
+test_time: 0.047043
+total_time: 45.864739
+confusion_matrix:
+[[21  0  1  1  0  4  3]
+ [ 0 23  0  0  3  4  0]
+ [ 2  0 28  0  0  0  0]
+ [ 6  0  2 17  3  0  2]
+ [ 5  3  0  0 10 12  0]
+ [ 3  2  0  0  2 23  0]
+ [ 5  0  1  0  0  1 23]]

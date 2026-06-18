@@ -1,0 +1,19 @@
+method: HOG (SVC)
+best_params: {'C': 0.1}
+accuracy: 0.666667
+macro_precision: 0.688015
+macro_recall: 0.666667
+macro_f1: 0.646149
+weighted_f1: 0.646149
+feature_extract_time: 37.048500
+train_time: 2359.759902
+test_time: 494.877043
+total_time: 2891.685445
+confusion_matrix:
+[[21  0  4  1  0  0  4]
+ [ 0 27  3  0  0  0  0]
+ [ 0  0 23  0  0  0  7]
+ [ 4  1  0 22  0  0  3]
+ [ 3  0  1  3  5 17  1]
+ [ 1  1  0  0  2 26  0]
+ [ 1  1 12  0  0  0 16]]

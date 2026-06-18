@@ -1,0 +1,19 @@
+method: SIFT-BoVW K=800 (SVC)
+best_params: {'C': 0.01}
+accuracy: 0.600000
+macro_precision: 0.639335
+macro_recall: 0.600000
+macro_f1: 0.583553
+weighted_f1: 0.583553
+feature_extract_time: 2951.816567
+train_time: 32.708783
+test_time: 0.086134
+total_time: 2984.611485
+confusion_matrix:
+[[19  1  7  0  0  0  3]
+ [ 0 22  2  0  0  4  2]
+ [ 4  0 23  0  0  0  3]
+ [ 2  0  0 18  1  9  0]
+ [ 4  2  0  4  4 15  1]
+ [ 3  0  2  2  1 22  0]
+ [ 1  0  9  1  0  1 18]]
