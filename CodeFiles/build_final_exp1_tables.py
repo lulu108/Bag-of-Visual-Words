@@ -6,13 +6,14 @@
 功能：
   1. 从 K sweep CSV 中按指定指标筛选 BoVW 最优结果。
   2. 从特征对比 CSV 中读取 Color Histogram / HOG / SIFT-BoVW-K800 结果。
-  3. 生成三张最终对比 CSV 表格和一份实验报告 Markdown 文档。
+  3. 生成最终对比 CSV 表格和一份实验报告 Markdown 文档。
 
 使用方式：
   python CodeFiles/build_final_exp1_tables.py \
       --k_sweep_csv outputs/summary_results.csv \
       --feature_compare_csv outputs/feature_compare_k800/summary_feature_compare.csv \
       --improved_csv outputs/bovw_improved/summary_improved.csv \
+      --svc_grid_csv outputs/feature_compare_svc_k800/summary_feature_compare_svc.csv \
       --output_dir outputs/final_tables \
       --select_by macro_f1
 """
@@ -47,6 +48,20 @@ TABLE_COMPARISON_FIELDS = [
     "macro_recall",
     "macro_f1",
     "weighted_f1",
+    "total_time",
+    "notes",
+]
+
+# 表 4 输出列（SVC + GridSearchCV 对比）
+TABLE_SVC_GRID_FIELDS = [
+    "method",
+    "setting",
+    "accuracy",
+    "macro_precision",
+    "macro_recall",
+    "macro_f1",
+    "weighted_f1",
+    "best_params",
     "total_time",
     "notes",
 ]
@@ -327,6 +342,74 @@ def build_improvement_table(improved_csv, best_bovw, output_dir):
 
 
 # ---------------------------------------------------------------------------
+# 表 4：统一 SVC + GridSearchCV 横向对比（仅当 svc_grid_csv 存在时）
+# ---------------------------------------------------------------------------
+def build_svc_grid_table(svc_grid_csv, output_dir):
+    """
+    表 4：统一 SVC + GridSearchCV 横向对比表。
+    如果 svc_grid_csv 不存在则跳过（返回 None）。
+    """
+    if not svc_grid_csv or not os.path.isfile(svc_grid_csv):
+        print(f"[INFO] svc_grid_csv 不存在 ({svc_grid_csv})，跳过表 4 生成。")
+        return None, None
+
+    svc_rows = read_csv_rows(svc_grid_csv)
+    rows_out = []
+
+    for r in svc_rows:
+        method_raw = r.get("method", "").strip()
+        best_c = r.get("best_C", "?").strip()
+
+        # 生成人类友好的 method 名称
+        if "Color Histogram" in method_raw:
+            display_method = "Color Histogram"
+            setting = "3D HSV (8×8×8) + SVC + GridSearchCV"
+            notes = (
+                f"来自 compare_traditional_features_svc.py；"
+                f"独立 GridSearchCV，best C={best_c}；"
+                f"比 LinearSVC 固定 C=1.0 更公平。"
+            )
+        elif "HOG" in method_raw:
+            display_method = "HOG"
+            setting = "HOG (orient=9, ppc=8×8, cpb=2×2) + SVC + GridSearchCV"
+            notes = (
+                f"来自 compare_traditional_features_svc.py；"
+                f"独立 GridSearchCV，best C={best_c}；"
+                f"高维特征需要强正则化。"
+            )
+        elif "SIFT-BoVW" in method_raw or "BoVW" in method_raw:
+            display_method = "SIFT-BoVW-K800"
+            setting = "SIFT-BoVW K=800 + SVC + GridSearchCV"
+            notes = (
+                f"来自 compare_traditional_features_svc.py；"
+                f"独立 GridSearchCV，best C={best_c}；"
+                f"稀疏直方图需要极强正则化。"
+            )
+        else:
+            display_method = method_raw
+            setting = f"SVC + GridSearchCV, best C={best_c}"
+            notes = "来自 compare_traditional_features_svc.py"
+
+        rows_out.append({
+            "method": display_method,
+            "setting": setting,
+            "accuracy": f"{safe_float(r.get('accuracy')):.6f}",
+            "macro_precision": f"{safe_float(r.get('macro_precision')):.6f}",
+            "macro_recall": f"{safe_float(r.get('macro_recall')):.6f}",
+            "macro_f1": f"{safe_float(r.get('macro_f1')):.6f}",
+            "weighted_f1": f"{safe_float(r.get('weighted_f1')):.6f}",
+            "best_params": f"C={best_c}",
+            "total_time": f"{safe_float(r.get('total_time')):.2f}",
+            "notes": notes,
+        })
+
+    os.makedirs(output_dir, exist_ok=True)
+    csv_path = os.path.join(output_dir, "final_svc_grid_comparison.csv")
+    write_output_csv(csv_path, TABLE_SVC_GRID_FIELDS, rows_out)
+    return rows_out, csv_path
+
+
+# ---------------------------------------------------------------------------
 # 输出写入
 # ---------------------------------------------------------------------------
 def write_output_csv(csv_path, fieldnames, rows):
@@ -346,6 +429,7 @@ def generate_markdown_report(
     table1_rows,
     table2_rows,
     table3_rows,
+    table4_rows,
     best_bovw,
     best_k,
     best_accuracy,
@@ -362,6 +446,9 @@ def generate_markdown_report(
     header_md = "| " + " | ".join(TABLE_COMPARISON_FIELDS) + " |"
     sep_md = "|" + "|".join("---:" for _ in TABLE_COMPARISON_FIELDS) + "|"
 
+    svc_header_md = "| " + " | ".join(TABLE_SVC_GRID_FIELDS) + " |"
+    svc_sep_md = "|" + "|".join("---:" for _ in TABLE_SVC_GRID_FIELDS) + "|"
+
     lines = []
     lines.append("# 实验一：最终实验结果汇总")
     lines.append("")
@@ -371,8 +458,8 @@ def generate_markdown_report(
     lines.append("## 结果组织方式")
     lines.append("")
     lines.append(
-        "实验一包含三条子实验线，各自输出中间 CSV 结果，"
-        "最终由 `CodeFiles/build_final_exp1_tables.py` 读取并生成以下三张对比表："
+        "实验一包含多条子实验线，各自输出中间 CSV 结果，"
+        "最终由 `CodeFiles/build_final_exp1_tables.py` 读取并生成以下对比表："
     )
     lines.append("")
     lines.append("1. **同分类器横向对比表**（表 1）：")
@@ -383,6 +470,10 @@ def generate_markdown_report(
     lines.append("   feature_compare 脚本，SIFT-BoVW 使用 K sweep 中的最优结果。")
     lines.append("3. **BoVW 改进尝试对比表**（表 3）：")
     lines.append("   对比原始 SIFT-BoVW 与 RootSIFT+TF-IDF 改进版本的性能差异。")
+    if table4_rows is not None:
+        lines.append("4. **统一 SVC + GridSearchCV 横向对比表**（表 4）：")
+        lines.append("   在统一 SVC + GridSearchCV 协议下重新对比三种传统特征，")
+        lines.append("   每种特征独立搜索最优 C，比表 1 的 LinearSVC 对比更公平。")
     lines.append("")
     lines.append("## SIFT-BoVW 最优结果选取说明")
     lines.append("")
@@ -463,6 +554,66 @@ def generate_markdown_report(
         lines.append("（improved_csv 不存在，该表暂未生成。）")
         lines.append("")
 
+    # ---- 表 4：统一 SVC + GridSearchCV 横向对比 ----
+    if table4_rows is not None:
+        lines.append("## 表 4：统一 SVC + GridSearchCV 横向对比")
+        lines.append("")
+        lines.append(
+            "Color Histogram、HOG、SIFT-BoVW-K800 均来自 "
+            "`compare_traditional_features_svc.py`，三者统一使用 **SVC(kernel='linear', class_weight='balanced')"
+            " + GridSearchCV(param_grid={'C': [0.01, 0.1, 1, 10, 100]}, cv=5, scoring='f1_macro')**。"
+        )
+        lines.append("")
+        lines.append(
+            "**与表 1（LinearSVC 对比）的区别：**"
+        )
+        lines.append("")
+        lines.append(
+            "- 表 1 使用 `LinearSVC(C=1.0, class_weight='balanced')`，所有方法共享同一个固定超参数；"
+        )
+        lines.append(
+            "- 表 4 每种特征**独立运行 GridSearchCV**，在相同的 param_grid 和 cv 设定下搜索各自的最优 C；"
+        )
+        lines.append(
+            "- 表 1 控制的是「分类器完全一致」，表 4 控制的是「超参数搜索协议一致」；"
+        )
+        lines.append(
+            "- 表 4 比表 1 对超参数的选择更鲁棒，因此更能反映特征表达能力的上限。"
+        )
+        lines.append("")
+        lines.append(
+            "**为什么三种特征需要独立搜索 C？**"
+        )
+        lines.append("")
+        lines.append(
+            "不同特征的正则化需求差异巨大。实验结果显示："
+            "Color Histogram 的最优 C=100（弱正则化，512 维 L2 归一化向量），"
+            "HOG 的最优 C=0.1（较强正则化，10,404 维高维特征），"
+            "SIFT-BoVW 的最优 C=0.01（极强正则化，800 维稀疏计数直方图）。"
+            "同一 C 值跨四个数量级，若强行统一 C 则无法公平比较。"
+        )
+        lines.append("")
+        lines.append(
+            "**与表 2（较优配置综合对比）的关系：**"
+        )
+        lines.append("")
+        lines.append(
+            "表 2 混合了不同分类器协议（Color Histogram/HOG 用 LinearSVC，BoVW 用 SVC），不是严格控制变量实验；"
+            "表 4 三种特征使用**完全相同的训练协议**（SVC + GridSearchCV），"
+            "是实验一中最接近「统一分类器调参协议」的公平比较。"
+        )
+        lines.append("")
+        lines.append(svc_header_md)
+        lines.append(svc_sep_md)
+        for row in table4_rows:
+            lines.append(csv_row_to_md(row, TABLE_SVC_GRID_FIELDS))
+        lines.append("")
+    else:
+        lines.append("## 表 4：统一 SVC + GridSearchCV 横向对比")
+        lines.append("")
+        lines.append("（svc_grid_csv 不存在，该表暂未生成。）")
+        lines.append("")
+
     # 确保 experiments 目录存在
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, "w", encoding="utf-8") as f:
@@ -496,6 +647,11 @@ def parse_args():
         "--output_dir",
         default=os.path.join("outputs", "final_tables"),
         help="最终对比表格输出目录。",
+    )
+    parser.add_argument(
+        "--svc_grid_csv",
+        default=None,
+        help="统一 SVC+GridSearchCV 对比 CSV 路径（可选，不存在时跳过表 4）。",
     )
     parser.add_argument(
         "--select_by",
@@ -546,18 +702,25 @@ def main():
     table2_rows, table2_path = build_best_config_table(fc_rows, best, args.output_dir)
 
     # ---- 步骤 6：表 3 (optional) ----
-    print(f"\n[4/5] 检查 improved_csv: {args.improved_csv}")
+    print(f"\n[4/6] 检查 improved_csv: {args.improved_csv}")
     table3_rows, table3_path = build_improvement_table(
         args.improved_csv, best, args.output_dir
     )
 
+    # ---- 表 4：统一 SVC + GridSearchCV 对比 (optional) ----
+    print(f"\n[5/6] 检查 svc_grid_csv: {args.svc_grid_csv or '(未指定)'}")
+    table4_rows, table4_path = build_svc_grid_table(
+        args.svc_grid_csv, args.output_dir
+    )
+
     # ---- 步骤 7：Markdown 报告 ----
-    print(f"\n[5/5] 生成实验报告...")
+    print(f"\n[6/6] 生成实验报告...")
     report_path = os.path.join("experiments", "exp1_final_comparison.md")
     generate_markdown_report(
         table1_rows=table1_rows,
         table2_rows=table2_rows,
         table3_rows=table3_rows,
+        table4_rows=table4_rows,
         best_bovw=best,
         best_k=best_k,
         best_accuracy=f"{best_accuracy:.6f}",
@@ -579,6 +742,10 @@ def main():
         print(f"  表 3 (BoVW 改进对比): {table3_path}")
     else:
         print(f"  表 3 (BoVW 改进对比): 未生成（improved_csv 不存在）")
+    if table4_path:
+        print(f"  表 4 (SVC Grid 对比):  {table4_path}")
+    else:
+        print(f"  表 4 (SVC Grid 对比): 未生成（svc_grid_csv 不存在或未指定）")
     print(f"  实验报告:              {report_path}")
     print("=" * 60)
 

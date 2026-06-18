@@ -1,0 +1,4 @@
+method,setting,accuracy,macro_precision,macro_recall,macro_f1,weighted_f1,best_params,total_time,notes
+Color Histogram,3D HSV (8×8×8) + SVC + GridSearchCV,0.690476,0.720083,0.690476,0.688484,0.688484,C=100,45.86,来自 compare_traditional_features_svc.py；独立 GridSearchCV，best C=100；比 LinearSVC 固定 C=1.0 更公平。
+HOG,"HOG (orient=9, ppc=8×8, cpb=2×2) + SVC + GridSearchCV",0.666667,0.688015,0.666667,0.646149,0.646149,C=0.1,2891.69,来自 compare_traditional_features_svc.py；独立 GridSearchCV，best C=0.1；高维特征需要强正则化。
+SIFT-BoVW-K800,SIFT-BoVW K=800 + SVC + GridSearchCV,0.600000,0.639335,0.600000,0.583553,0.583553,C=0.01,2984.61,来自 compare_traditional_features_svc.py；独立 GridSearchCV，best C=0.01；稀疏直方图需要极强正则化。
